@@ -8,24 +8,9 @@ let optionsEmpresa = {
   user: config.databaseEmpresa.user,
   password: config.databaseEmpresa.password,
   lowercase_keys: false, // set to true to lowercase keys
-  role: null,            // default
-  pageSize: 4096,        // default when creating database
+  role: null, // default
+  pageSize: 4096, // default when creating database
 };
-
-// 5 = the number is count of opened sockets
-let poolEmpresa = firebird.pool(5, optionsEmpresa);
-
-// Get a free pool
-poolEmpresa.get(function(err, db) {
-  if (err){
-    throw err;
-  }
-
-  db.query("SHOW TABLES;", function(err, result) {
-      db.detach();
-  });
-});
-
 let optionsComun = {
   host: config.databaseComun.host,
   port: config.databaseComun.port,
@@ -33,22 +18,53 @@ let optionsComun = {
   user: config.databaseComun.user,
   password: config.databaseComun.password,
   lowercase_keys: false, // set to true to lowercase keys
-  role: null,            // default
-  pageSize: 4096,        // default when creating database
+  role: null, // default
+  pageSize: 4096, // default when creating database
 };
 
 // 5 = the number is count of opened sockets
-let poolComun = firebird.pool(5, optionsComun);
+const poolEmpresa = firebird.pool(5, optionsEmpresa, () => {});
+const poolComun = firebird.pool(5, optionsComun, () => {});
 
-// Get a free pool
-poolComun.get(function(err, db) {
-  if (err){
-    throw err;
+class FirebirdPromise {
+  static attachPool(bbdd) {
+    return new Promise(
+      (resolve, reject) => {
+        if(bbdd=="comun"){
+          poolComun.get((err, db) => {
+            if (err) return reject(err);
+            resolve(db);
+          });
+        }else{
+          poolEmpresa.get((err, db) => {
+            if (err) return reject(err);
+            resolve(db);
+          });
+        }
+      });
   }
 
-  db.query("SHOW TABLES;", function(err, result) {
-      db.detach();
-  });
-});
+  async aquery(querysql, params, bbdd) {
+    const db = await FirebirdPromise.attachPool(bbdd);
+    if (db) {
+      return new Promise(
+        (resolve, reject) => {
+          if (config.log.SQL) {
+            console.log(querysql)
+          };
+          db.query(querysql, params, (err, data) => {
+            if (err) {
+              db.detach();
+              return reject(err);
+            }
+            db.detach();
+            resolve(data);
+          });
+        });
+    } else {
+      throw "Not enough connections: Cannot get db from the pool!";
+    }
+  }
+}
 
-module.exports = {poolComun, poolEmpresa};
+module.exports = new FirebirdPromise();

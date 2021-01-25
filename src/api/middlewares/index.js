@@ -1,5 +1,5 @@
-const checkValidToken = require('./checkValidToken.js');
+const checkValidUser = require('./checkValidUser.js');
 
 module.exports = {
-  checkValidToken,
+  checkValidUser,
 };

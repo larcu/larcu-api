@@ -5,12 +5,12 @@ const middlewares = require('../middlewares/index');
 const route = express.Router();
 
 // All operations require to be logged
-// route.use('/', middlewares.checkValidToken);
+route.use('/', middlewares.checkValidUser);
 
 route.get('/:id?', async (req, res) => {
   const result = await itemService.read({
     id: req.params['id'],
-    ref: req.query['referencia'],
+    ref: req.body['referencia'],
   });
 
   if (result === "error") {

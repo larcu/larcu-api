@@ -1,5 +1,4 @@
-const pool = require('./database.js');
-const poolEmpresa = pool.poolEmpresa;
+const FirebirdPromise = require("./database.js");
 
 class ItemService {
   /**
@@ -10,7 +9,7 @@ class ItemService {
       let query;
       const params = [];
 
-      query = "SELECT * FROM ARTICULO WHERE 1=1";
+      query = "SELECT ID_ARTICULO, REFERENCIA, DESCRIPCION FROM ARTICULO WHERE 1=1";
       if (id) {
         query += " AND ID_ARTICULO=?";
         params.push(id);
@@ -21,19 +20,9 @@ class ItemService {
       }
 
       query += " ORDER BY LOWER(DESCRIPCION)";
-      poolEmpresa.get(function(err, db) {
-        if (err){
-          throw err;
-        }
-        db.query(query, params, function(err, result) {
-          if (err){
-            throw err;
-          }
-          console.log(result);
-          db.detach();
-          return result;
-        });
-      });
+      
+      let data = await FirebirdPromise.aquery(query, params, "empresa");
+      return data;
     } catch (error) {
       console.log("Error at ItemService -> read: "+error);
       return 'error';

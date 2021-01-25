@@ -27,4 +27,7 @@ module.exports = {
   auth: {
     key: process.env.AUTH_KEY,
   },
+  log: {
+    SQL: true,
+  },
 }
