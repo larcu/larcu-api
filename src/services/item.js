@@ -4,12 +4,12 @@ class ItemService {
   /**
    * Returns items
    */
-  async read({ id, ref }) {
+  async read({ id, ref, fam }) {
     try {
       let query;
       const params = [];
 
-      query = "SELECT ID_ARTICULO, REFERENCIA, DESCRIPCION FROM ARTICULO WHERE 1=1";
+      query = "SELECT * FROM ARTICULO WHERE TELEMATICO=1";
       if (id) {
         query += " AND ID_ARTICULO=?";
         params.push(id);
@@ -17,6 +17,18 @@ class ItemService {
       if (ref) {
         query += " AND REFERENCIA=?";
         params.push(ref);
+      }
+      if (fam) {
+        const querySelectFamilia = "SELECT ID_FAMILIA FROM FAMILIA WHERE DESCRIPCION=?";
+        const paramsSelectFamilia = [fam];
+        let dataFamilia = await FirebirdPromise.aquery(querySelectFamilia, paramsSelectFamilia, "empresa");
+        if(dataFamilia[0]){
+          const idFamilia = dataFamilia[0].ID_FAMILIA;
+          query += " AND ID_FAMILIA=?";
+          params.push(idFamilia);
+        }else{
+          return 'nonExistent';
+        }
       }
 
       query += " ORDER BY LOWER(DESCRIPCION)";

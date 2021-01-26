@@ -11,8 +11,13 @@ route.get('/:id?', async (req, res) => {
   const result = await itemService.read({
     id: req.params['id'],
     ref: req.body['referencia'],
+    fam: req.body['familia'],
   });
 
+  if (result === "nonExistent") {
+    res.status(401).send("non existent family");
+    return;
+  }
   if (result === "error") {
     res.status(500).send("error");
     return;
