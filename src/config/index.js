@@ -10,19 +10,12 @@ module.exports = {
   version: process.env.APP_VERSION,
   minVersion: process.env.APP_MIN_VERSION,
   webURL: process.env.WEB_URL,
-  databaseEmpresa: {
+  database: {
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     user: process.env.DB_USER,
     password: process.env.DB_PASS,
-    name: process.env.DB_NAME,
-  },
-  databaseComun: {
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASS,
-    name: process.env.DB_NAME_COMUN,
+    dir: process.env.DB_DIR,
   },
   auth: {
     key: process.env.AUTH_KEY,

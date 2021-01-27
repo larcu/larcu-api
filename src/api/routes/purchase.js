@@ -10,7 +10,6 @@ route.use('/', middlewares.checkValidUser);
 route.post('/', async (req, res) => {
   const result = await purchaseService.create({
     ref: req.body['referencia'],
-    alm: req.body['almacen'],
     unid: req.body['unidades'],
   });
 

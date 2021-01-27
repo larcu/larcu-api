@@ -1,13 +1,24 @@
 const FirebirdPromise = require("./database.js");
-const formatDate = require('../api/basics/formatDate.js');
+const dateFormat = require('dateformat');
 
 class PurchaseService {
-  async create({ ref, alm, unid }) {
+  async create({ ref, unid }) {
     if ((!ref)||(!unid)) {
       return "badArguments";
     }
     try {
-      const fecha = formatDate(new Date(), '%d.%m.%y, %h:%m:%s')+".000";
+      const fecha = dateFormat(new Date(), "dd.mm.yyyy, HH:MM:ss")+".000";
+
+      let almacenDefecto = 0;
+      const querySelectTratamientoAlmacen = "SELECT EXISTENCIAS_TRATAMIENTO FROM TIENDA_VIRTUAL WHERE ID=1";
+      let dataTratamientoAlmacen = await FirebirdPromise.aquery(querySelectTratamientoAlmacen, [], "comun");
+      const tratamiento = dataTratamientoAlmacen[0].EXISTENCIAS_TRATAMIENTO;
+      if(tratamiento){ //Hay almacén definido para coger existencias
+        const querySelectAlmacenDefecto = "SELECT EXISTENCIAS_ALMACEN FROM TIENDA_VIRTUAL WHERE ID=1";
+        let dataAlmacenDefecto = await FirebirdPromise.aquery(querySelectAlmacenDefecto, [], "comun");
+        almacenDefecto = dataAlmacenDefecto[0].EXISTENCIAS_TRATAMIENTO;
+      }
+
       const querySelectArticulo = "SELECT * FROM ARTICULO WHERE TELEMATICO=1 AND REFERENCIA=?";
       const paramsSelectArticulo = [ref];
       let dataArticulo = await FirebirdPromise.aquery(querySelectArticulo, paramsSelectArticulo, "empresa");
@@ -33,62 +44,82 @@ class PurchaseService {
 
       let compra = false;
       let idAlmacen = 0;
+      let retirarStock = []; 
 
-      if(alm){
+      if(almacenDefecto){ //Existencias se obtienen de almacen definido
         const querySelectAlmacen = "SELECT ID_ALMACEN FROM ALMACEN WHERE DESCRIPCION=?";
-        const paramsSelectAlmacen = [alm];
+        const paramsSelectAlmacen = [almacenDefecto];
         let dataAlmacen = await FirebirdPromise.aquery(querySelectAlmacen, paramsSelectAlmacen, "comun");
         if(dataAlmacen[0]){
           idAlmacen = dataAlmacen[0].ID_ALMACEN;
           const querySelectExistencias = "SELECT EXISTENCIAS FROM EXISTENCIA WHERE ID_ARTICULO=? AND ID_ALMACEN>=?";
           const paramsSelectExistencias = [idArticulo, idAlmacen];
           let dataExistencias = await FirebirdPromise.aquery(querySelectExistencias, paramsSelectExistencias, "empresa");
-          if(dataExistencias[0].EXISTENCIAS && dataExistencias[0].EXISTENCIAS >= unid){ compra = true; }else{ return "OutOfStock"; }
+          if(dataExistencias[0].EXISTENCIAS && dataExistencias[0].EXISTENCIAS >= unid){ 
+            compra = true; 
+            retirarStock.push({almacen: idAlmacen, unidades: dataExistencias[0].EXISTENCIAS});
+          }else{ 
+            return "OutOfStock"; 
+          }
         }else{
           return "almNotExist";
         }
-      }else{
+      }else{ //Existencias se obtienen del total de las existencias en todos los almacenes
         const querySelectExistencias = "SELECT SUM(EXISTENCIAS) AS SUMA_EXISTENCIAS FROM EXISTENCIA WHERE ID_ARTICULO=?";
         const paramsSelectExistencias = [idArticulo];
         let dataExistencias = await FirebirdPromise.aquery(querySelectExistencias, paramsSelectExistencias, "empresa");
         if(dataExistencias[0].SUMA_EXISTENCIAS && dataExistencias[0].SUMA_EXISTENCIAS >= unid){ 
           compra = true; 
-          //TODO: Quedarme con los ids de almacenes donde hay que reducir stock y cuanto reducir de cada uno
-          const querySelectAlmacen = "SELECT ID_ALMACEN FROM EXISTENCIA WHERE ID_ARTICULO=? AND EXISTENCIAS!=0";
-          const paramsSelectAlmacen = [idArticulo];
-          let dataAlmacen = await FirebirdPromise.aquery(querySelectAlmacen, paramsSelectAlmacen, "empresa");
-          if(dataAlmacen[0].ID_ALMACEN){ compra = true; idAlmacen = dataAlmacen[0].ID_ALMACEN }else{ compra = false; return "unexpectedError";  }
+          let cont = 0;
+          const querySelectExistenciasPorAlmacen = "SELECT EXISTENCIAS, ID_ALMACEN FROM EXISTENCIA WHERE ID_ARTICULO=? AND EXISTENCIAS>0";
+          const paramsSelectExistenciasPorAlmacen = [idArticulo];
+          let dataExistencias = await FirebirdPromise.aquery(querySelectExistenciasPorAlmacen, paramsSelectExistenciasPorAlmacen, "empresa");
+          while((unid>0)&&(dataExistencias[cont])){
+            if(dataExistencias[cont].EXISTENCIAS<=unid){
+              retirarStock.push({almacen: dataExistencias[cont].ID_ALMACEN, unidades: dataExistencias[cont].EXISTENCIAS});
+              unid = unid - dataExistencias[cont].EXISTENCIAS;
+            }else{
+              retirarStock.push({almacen: dataExistencias[cont].ID_ALMACEN, unidades: unid});
+              unid = 0;
+            }
+            cont++;
+          }
         }else{ 
           return "OutOfStock"; 
         }
       }
 
       if (compra) {
+        let retirada;
         const queryUpdateExistencia = "UPDATE EXISTENCIA SET EXISTENCIAS=EXISTENCIAS-? WHERE ID_ARTICULO=? AND ID_ALMACEN=?";
-        const paramsUpdateExistencia = [unid, idArticulo, idAlmacen];
-        let dataExistencia = await FirebirdPromise.aquery(queryUpdateExistencia, paramsUpdateExistencia, "empresa");
-
+        let paramsUpdateExistencia = [];
         const queryInsertMovimiento = "INSERT INTO MOVIMIENTO (ID_TMOVIMIENTO, DESCRIPCION_MOV, FECHA, REFERENCIA,"+
-          "DESCRIPCION, UNIDADES, PRECIO_COSTE_M1, PRECIO_COSTE_M2, PRECIO_VENTA_M1,"+
-          "PRECIO_VENTA_M2, IVA_VENTA_PORC, IVA_VENTA_IMP_M1, IVA_VENTA_IMP_M2, ID_ALMACEN,"+
-          "FAMILIA_CODIGO, FAMILIA_DESCRIPCION, LIQUIDO_M1, LIQUIDO_M2, BI_BASE_M1,"+
-          "BI_BASE_M2, BI_IVA_M1, BI_IVA_M2)"+
-          "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-        const ivaVentaM1 = precioVentaM1Articulo * (porcentajeIva/100);
-        const ivaVentaM2 = precioVentaM2Articulo * (porcentajeIva/100);
-        const liquidoM1 = precioVentaM1Articulo + ivaVentaM1;
-        const liquidoM2 = precioVentaM2Articulo + ivaVentaM2;
-        const baseM1 = precioVentaM1Articulo;
-        const baseM2 = precioVentaM2Articulo;
-        const ivaM1 = ivaVentaM1;
-        const ivaM2 = ivaVentaM2;
-        const paramsInsertMovimiento = [0, "Venta por internet", fecha, referenciaArticulo, descripcionArticulo, unid, precioCosteM1Articulo, precioCosteM2Articulo,
-                                        precioVentaM1Articulo, precioVentaM2Articulo, porcentajeIva, ivaVentaM1, ivaVentaM2, idAlmacen, codigoFamilia, descripcionFamilia,
-                                        liquidoM1, liquidoM2, baseM1, baseM2, ivaM1, ivaM2];
-        let dataMovimiento = await FirebirdPromise.aquery(queryInsertMovimiento, paramsInsertMovimiento, "empresa");
-        
-        console.log(dataExistencia);
-        console.log(dataMovimiento);
+                                      "DESCRIPCION, UNIDADES, PRECIO_COSTE_M1, PRECIO_COSTE_M2, PRECIO_VENTA_M1,"+
+                                      "PRECIO_VENTA_M2, IVA_VENTA_PORC, IVA_VENTA_IMP_M1, IVA_VENTA_IMP_M2, ID_ALMACEN,"+
+                                      "FAMILIA_CODIGO, FAMILIA_DESCRIPCION, LIQUIDO_M1, LIQUIDO_M2, BI_BASE_M1,"+
+                                      "BI_BASE_M2, BI_IVA_M1, BI_IVA_M2)"+
+                                      "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        let paramsInsertMovimiento = [];
+        while(retirarStock.length){
+          //Reducimos stock en almacen
+          retirada = retirarStock.pop();
+          paramsUpdateExistencia = [retirada.unidades, idArticulo, retirada.almacen];
+          await FirebirdPromise.aquery(queryUpdateExistencia, paramsUpdateExistencia, "empresa");
+
+          //Insertamos movimientos
+          const baseM1 = (precioVentaM1Articulo*retirada.unidades);
+          const baseM2 = (precioVentaM2Articulo*retirada.unidades);
+          const ivaVentaM1 = baseM1 * (porcentajeIva/100);
+          const ivaVentaM2 = baseM2 * (porcentajeIva/100);
+          const liquidoM1 = baseM1 + ivaVentaM1;
+          const liquidoM2 = baseM2 + ivaVentaM2;
+          const ivaM1 = ivaVentaM1;
+          const ivaM2 = ivaVentaM2;
+          paramsInsertMovimiento = [4, "Venta de tienda virtual", fecha, referenciaArticulo, descripcionArticulo, retirada.unidades, precioCosteM1Articulo, precioCosteM2Articulo,
+                                    precioVentaM1Articulo, precioVentaM2Articulo, porcentajeIva, ivaVentaM1, ivaVentaM2, retirada.almacen, codigoFamilia, descripcionFamilia,
+                                    liquidoM1, liquidoM2, baseM1, baseM2, ivaM1, ivaM2];
+          await FirebirdPromise.aquery(queryInsertMovimiento, paramsInsertMovimiento, "empresa");
+        }
         return "ok";
       }else{
         return "OutOfStock";
@@ -104,14 +135,10 @@ class PurchaseService {
     let query;
     const params = [];
 
-    query = "SELECT * FROM MOVIMIENTO WHERE DESCRIPCION_MOV='Venta por internet'";
-    if (startDate) {
-      query += " AND FECHA>=?";
-      params.push(startDate);
-    }
-    if (endDate) {
-      query += " AND FECHA<=?";
-      params.push(endDate);
+    query = "SELECT * FROM MOVIMIENTO WHERE DESCRIPCION_MOV=DESCRIPCION_MOV";
+    if (startDate && endDate) {
+      query += " AND CAST(FECHA AS DATE) BETWEEN ? AND ?";
+      params.push(startDate, endDate);
     }
 
     query += " ORDER BY LOWER(FECHA)";

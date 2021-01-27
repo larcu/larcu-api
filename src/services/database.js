@@ -1,51 +1,49 @@
 const firebird = require('node-firebird');
 const config = require('../config/index.js');
 
-let optionsEmpresa = {
-  host: config.databaseEmpresa.host,
-  port: config.databaseEmpresa.port,
-  database: config.databaseEmpresa.name,
-  user: config.databaseEmpresa.user,
-  password: config.databaseEmpresa.password,
-  lowercase_keys: false, // set to true to lowercase keys
-  role: null, // default
-  pageSize: 4096, // default when creating database
-};
 let optionsComun = {
-  host: config.databaseComun.host,
-  port: config.databaseComun.port,
-  database: config.databaseComun.name,
-  user: config.databaseComun.user,
-  password: config.databaseComun.password,
+  host: config.database.host,
+  port: config.database.port,
+  database: config.database.dir+"COMUN.FDB",
+  user: config.database.user,
+  password: config.database.password,
   lowercase_keys: false, // set to true to lowercase keys
   role: null, // default
   pageSize: 4096, // default when creating database
 };
 
-// 5 = the number is count of opened sockets
-const poolEmpresa = firebird.pool(5, optionsEmpresa, () => {});
 const poolComun = firebird.pool(5, optionsComun, () => {});
 
-class FirebirdPromise {
-  static attachPool(bbdd) {
+async function getPoolEmpresa(){
+  const data = await FirebirdPromiseComun.aquery("SELECT EMPRESA_CODIGO FROM TIENDA_VIRTUAL WHERE ID=1");
+  const bbddEmpresa = config.database.dir+"EMPRESA_"+data[0].EMPRESA_CODIGO+".FDB";
+
+  let optionsEmpresa = {
+    host: config.database.host,
+    port: config.database.port,
+    database: bbddEmpresa,
+    user: config.database.user,
+    password: config.database.password,
+    lowercase_keys: false, // set to true to lowercase keys
+    role: null, // default
+    pageSize: 4096, // default when creating database
+  };
+  return firebird.pool(5, optionsEmpresa, () => {});
+}
+
+class FirebirdPromiseComun {
+  static async attachPool() {
     return new Promise(
       (resolve, reject) => {
-        if(bbdd=="comun"){
-          poolComun.get((err, db) => {
-            if (err) return reject(err);
-            resolve(db);
-          });
-        }else{
-          poolEmpresa.get((err, db) => {
-            if (err) return reject(err);
-            resolve(db);
-          });
-        }
+        poolComun.get((err, db) => {
+          if (err) return reject(err);
+          resolve(db);
+        });
       });
   }
 
-  async aquery(querysql, params, bbdd) {
-    const db = await FirebirdPromise.attachPool(bbdd);
+  static async aquery(querysql, params) {
+    const db = await FirebirdPromiseComun.attachPool();
     if (db) {
       return new Promise(
         (resolve, reject) => {
@@ -67,4 +65,61 @@ class FirebirdPromise {
   }
 }
 
-module.exports = new FirebirdPromise();
+class FirebirdPromiseEmpresa {
+  constructor(poolEmpresa){
+    if(!poolEmpresa){
+      throw new Error("Cannot be called directly");
+    }
+    this.poolEmpresa = poolEmpresa;
+  }
+
+  static async build(){
+    let poolEmpresa = await getPoolEmpresa();
+    return new FirebirdPromiseEmpresa(poolEmpresa);
+  }
+
+  async attachPool() {
+    return new Promise(
+      (resolve, reject) => {
+        this.poolEmpresa.get((err, db) => {
+          if (err) return reject(err);
+          resolve(db);
+        });
+      });
+  }
+
+  async aquery(querysql, params) {
+    const db = await this.attachPool();
+    if (db) {
+      return new Promise(
+        (resolve, reject) => {
+          if (config.log.SQL) {
+            console.log(querysql)
+          };
+          db.query(querysql, params, (err, data) => {
+            if (err) {
+              db.detach();
+              return reject(err);
+            }
+            db.detach();
+            resolve(data);
+          });
+        });
+    } else {
+      throw "Not enough connections: Cannot get db from the pool!";
+    }
+  }
+}
+
+class FirebirdPromise {
+  static async aquery(querysql, params, bbdd) {
+    if(bbdd=="comun"){
+      return FirebirdPromiseComun.aquery(querysql, params);
+    }else{
+      let db = await FirebirdPromiseEmpresa.build();
+      return db.aquery(querysql, params);
+    }
+  }
+}
+
+module.exports = FirebirdPromise;
