@@ -10,7 +10,7 @@ if (config.nodeEnv === "development") {
 }
 
 app.get('/', function (req, res) {
-  res.status(200).send("Funcionando correctamente");
+  res.status(200).send("La API de Winvisión está funcionando correctamente");
 });
 
 // Middlewares to parse the body of the requests
