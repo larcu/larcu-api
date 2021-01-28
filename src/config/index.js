@@ -2,6 +2,8 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
+process.env.TZ = "Europe/London";
+
 module.exports = {
   nodeEnv: process.env.NODE_ENV,
   logging: process.env.LOG_LEVEL,
