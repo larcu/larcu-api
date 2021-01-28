@@ -4,7 +4,7 @@ const config = require('../config/index.js');
 let optionsComun = {
   host: config.database.host,
   port: config.database.port,
-  database: config.database.dir+"COMUN.FDB",
+  database: config.database.dir+config.database.comun+".FDB",
   user: config.database.user,
   password: config.database.password,
   lowercase_keys: false, // set to true to lowercase keys
@@ -16,7 +16,7 @@ const poolComun = firebird.pool(5, optionsComun, () => {});
 
 async function getPoolEmpresa(){
   const data = await FirebirdPromiseComun.aquery("SELECT EMPRESA_CODIGO FROM TIENDA_VIRTUAL WHERE ID=1");
-  const bbddEmpresa = config.database.dir+"EMPRESA_"+data[0].EMPRESA_CODIGO+".FDB";
+  const bbddEmpresa = config.database.dir+config.database.empresa+data[0].EMPRESA_CODIGO+".FDB";
 
   let optionsEmpresa = {
     host: config.database.host,

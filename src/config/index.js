@@ -18,6 +18,8 @@ module.exports = {
     user: process.env.DB_USER,
     password: process.env.DB_PASS,
     dir: process.env.DB_DIR,
+    comun: process.env.DB_COMUN,
+    empresa: process.env.DB_EMPRESA,
   },
   auth: {
     key: process.env.AUTH_KEY,
