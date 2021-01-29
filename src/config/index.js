@@ -6,7 +6,6 @@ process.env.TZ = "Europe/London";
 
 module.exports = {
   nodeEnv: process.env.NODE_ENV,
-  logging: process.env.LOG_LEVEL,
   port: process.env.APP_PORT,
   appName: process.env.APP_NAME,
   version: process.env.APP_VERSION,
@@ -22,6 +21,6 @@ module.exports = {
     empresa: process.env.DB_EMPRESA,
   },
   log: {
-    SQL: true,
+    SQL: process.env.LOG,
   },
 }
