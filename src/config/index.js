@@ -21,9 +21,6 @@ module.exports = {
     comun: process.env.DB_COMUN,
     empresa: process.env.DB_EMPRESA,
   },
-  auth: {
-    key: process.env.AUTH_KEY,
-  },
   log: {
     SQL: true,
   },
