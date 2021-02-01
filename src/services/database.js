@@ -16,7 +16,9 @@ const poolComun = firebird.pool(5, optionsComun, () => {});
 
 async function getPoolEmpresa(){
   const data = await FirebirdPromiseComun.aquery("SELECT EMPRESA_CODIGO FROM TIENDA_VIRTUAL WHERE ID=1");
-  const bbddEmpresa = config.database.dir+config.database.empresa+data[0].EMPRESA_CODIGO+".FDB";
+  let code = data[0].EMPRESA_CODIGO;
+  if(code<10){code = "0"+code;}
+  const bbddEmpresa = config.database.dir+config.database.empresa+code+".FDB";
 
   let optionsEmpresa = {
     host: config.database.host,
