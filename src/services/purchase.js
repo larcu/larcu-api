@@ -115,7 +115,7 @@ class PurchaseService {
           const liquidoM2 = baseM2 + ivaVentaM2;
           const ivaM1 = ivaVentaM1;
           const ivaM2 = ivaVentaM2;
-          paramsInsertMovimiento = [4, "Venta de tienda virtual", datePurchase, referenciaArticulo, descripcionArticulo, reduce.unidades, precioCosteM1Articulo, precioCosteM2Articulo,
+          paramsInsertMovimiento = [8, "Venta de tienda virtual", datePurchase, referenciaArticulo, descripcionArticulo, reduce.unidades, precioCosteM1Articulo, precioCosteM2Articulo,
                                     precioVentaM1Articulo, precioVentaM2Articulo, porcentajeIva, ivaVentaM1, ivaVentaM2, reduce.almacen, codigoFamilia, descripcionFamilia,
                                     liquidoM1, liquidoM2, baseM1, baseM2, ivaM1, ivaM2];
           await FirebirdPromise.aquery(queryInsertMovimiento, paramsInsertMovimiento, "empresa");
@@ -135,7 +135,7 @@ class PurchaseService {
     let query;
     const params = [];
 
-    query = "SELECT * FROM MOVIMIENTO WHERE DESCRIPCION_MOV=DESCRIPCION_MOV";
+    query = "SELECT * FROM MOVIMIENTO WHERE DESCRIPCION_MOV='Venta de tienda virtual'";
     if (startDate && endDate) {
       query += " AND CAST(FECHA AS DATE) BETWEEN ? AND ?";
       params.push(startDate, endDate);
