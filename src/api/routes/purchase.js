@@ -26,9 +26,6 @@ route.post('/', async (req, res) => {
     case 'ok':
       res.status(200).send('ok');
       return;
-    case 'unexpectedError':
-      res.status(500).send('unexpected error');
-      return;
     case 'error':
       res.status(500).send('error');
       return;
