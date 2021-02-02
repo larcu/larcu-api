@@ -21,7 +21,7 @@ route.post('/', async (req, res) => {
       res.status(400).send('out of stock');
       return;
     case 'almNotExist':
-      res.status(400).send('almacen not exist');
+      res.status(400).send('store not exist');
       return;
     case 'ok':
       res.status(200).send('ok');
