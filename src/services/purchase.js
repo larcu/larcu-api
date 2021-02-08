@@ -27,8 +27,7 @@ class PurchaseService {
       const descripcionArticulo = dataArticulo[0].DESCRIPCION;
       const precioCosteM1Articulo = dataArticulo[0].PRECIO_COSTE_M1;
       const precioCosteM2Articulo = dataArticulo[0].PRECIO_COSTE_M2;
-      const precioVentaM1Articulo = dataArticulo[0].PRECIO_VENTA1_M1;
-      const precioVentaM2Articulo = dataArticulo[0].PRECIO_VENTA1_M2;
+      const precioVenta = dataArticulo[0].PRECIO_VENTA_TIENDA_VIRTUAL;
       const idIVAArticulo = dataArticulo[0].ID_IVA_VENTA;
 
       const querySelectFamilia = "SELECT CODIGO, DESCRIPCION FROM FAMILIA WHERE ID_FAMILIA=?";
@@ -95,10 +94,10 @@ class PurchaseService {
         let paramsUpdateExistencia = [];
         const queryInsertMovimiento = "INSERT INTO MOVIMIENTO (ID_TMOVIMIENTO, DESCRIPCION_MOV, FECHA, REFERENCIA,"+
                                       "DESCRIPCION, UNIDADES, PRECIO_COSTE_M1, PRECIO_COSTE_M2, PRECIO_VENTA_M1,"+
-                                      "PRECIO_VENTA_M2, IVA_VENTA_PORC, IVA_VENTA_IMP_M1, IVA_VENTA_IMP_M2, ID_ALMACEN,"+
-                                      "FAMILIA_CODIGO, FAMILIA_DESCRIPCION, LIQUIDO_M1, LIQUIDO_M2, BI_BASE_M1,"+
-                                      "BI_BASE_M2, BI_IVA_M1, BI_IVA_M2)"+
-                                      "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                                      "IVA_VENTA_PORC, IVA_VENTA_IMP_M1, ID_ALMACEN,"+
+                                      "FAMILIA_CODIGO, FAMILIA_DESCRIPCION, LIQUIDO_M1, BI_BASE_M1,"+
+                                      "BI_IVA_M1)"+
+                                      "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         let paramsInsertMovimiento = [];
         while(reduceStock.length){
           //Reducimos stock en almacen
@@ -107,17 +106,12 @@ class PurchaseService {
           await FirebirdPromise.aquery(queryUpdateExistencia, paramsUpdateExistencia, "empresa");
 
           //Insertamos movimientos
-          const baseM1 = parseFloat(precioVentaM1Articulo*reduce.unidades);
-          const baseM2 = parseFloat(precioVentaM2Articulo*reduce.unidades);
-          const ivaVentaM1 = parseFloat(baseM1 * (porcentajeIva/100));
-          const ivaVentaM2 = parseFloat(baseM2 * (porcentajeIva/100));
-          const liquidoM1 = baseM1 + ivaVentaM1;
-          const liquidoM2 = baseM2 + ivaVentaM2;
-          const ivaM1 = ivaVentaM1;
-          const ivaM2 = ivaVentaM2;
+          const base = parseFloat(precioVenta*reduce.unidades);
+          const ivaVenta = parseFloat(base * (porcentajeIva/100));
+          const liquido = base + ivaVenta;
           paramsInsertMovimiento = [8, "Venta de tienda virtual", datePurchase, referenciaArticulo, descripcionArticulo, reduce.unidades, precioCosteM1Articulo, precioCosteM2Articulo,
-                                    precioVentaM1Articulo, precioVentaM2Articulo, porcentajeIva, ivaVentaM1, ivaVentaM2, reduce.almacen, codigoFamilia, descripcionFamilia,
-                                    liquidoM1, liquidoM2, baseM1, baseM2, ivaM1, ivaM2];
+                                    precioVenta, porcentajeIva, ivaVenta, reduce.almacen, codigoFamilia, descripcionFamilia,
+                                    liquido, base, ivaVenta];
           await FirebirdPromise.aquery(queryInsertMovimiento, paramsInsertMovimiento, "empresa");
         }
         return "ok";
