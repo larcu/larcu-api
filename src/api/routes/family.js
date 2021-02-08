@@ -10,8 +10,8 @@ route.use('/', middlewares.checkValidUser);
 route.get('/:id?', async (req, res) => {
   const result = await familyService.read({
     id: req.params['id'],
-    cod: req.body['codigo'],
-    des: req.body['descripcion'],
+    cod: req.query['codigo'],
+    des: req.query['descripcion'],
   });
 
   if (result === "error") {

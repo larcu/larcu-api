@@ -10,8 +10,8 @@ route.use('/', middlewares.checkValidUser);
 route.get('/:id?', async (req, res) => {
   const result = await itemService.read({
     id: req.params['id'],
-    ref: req.body['referencia'],
-    fam: req.body['familia'],
+    ref: req.query['referencia'],
+    fam: req.query['familia'],
   });
 
   if (result === "nonExistent") {

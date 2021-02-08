@@ -34,8 +34,8 @@ route.post('/', async (req, res) => {
 
 route.get('/', async (req, res) => {
   const result = await purchaseService.read({
-    startDate: req.body['fechaInicio'],
-    endDate: req.body['fechaFin'],
+    startDate: req.query['inicio'],
+    endDate: req.query['fin'],
   });
   if (result === "error") {
     res.status(500).send("error");
