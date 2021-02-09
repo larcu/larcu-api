@@ -9,15 +9,11 @@ class PurchaseService {
     try {
       const datePurchase = dateFormat(new Date(), "dd.mm.yyyy, HH:MM:ss")+".000";
 
-      let almacenDefecto = 0;
-      const querySelectTratamientoAlmacen = "SELECT EXISTENCIAS_TRATAMIENTO FROM TIENDA_VIRTUAL WHERE ID=1";
+      const querySelectTratamientoAlmacen = "SELECT EXISTENCIAS_TRATAMIENTO, EXISTENCIAS_ALMACEN, VENDER_SIN_EXISTENCIAS FROM TIENDA_VIRTUAL WHERE ID=1";
       let dataTratamientoAlmacen = await FirebirdPromise.aquery(querySelectTratamientoAlmacen, [], "comun");
       const tratamiento = dataTratamientoAlmacen[0].EXISTENCIAS_TRATAMIENTO;
-      if(tratamiento){ //Hay almacén definido para coger existencias
-        const querySelectAlmacenDefecto = "SELECT EXISTENCIAS_ALMACEN FROM TIENDA_VIRTUAL WHERE ID=1";
-        let dataAlmacenDefecto = await FirebirdPromise.aquery(querySelectAlmacenDefecto, [], "comun");
-        almacenDefecto = dataAlmacenDefecto[0].EXISTENCIAS_TRATAMIENTO;
-      }
+      const idAlmacen = dataTratamientoAlmacen[0].EXISTENCIAS_ALMACEN;
+      const venderSinExistencias = dataTratamientoAlmacen[0].VENDER_SIN_EXISTENCIAS;
 
       const querySelectArticulo = "SELECT * FROM ARTICULO WHERE TELEMATICO=1 AND REFERENCIA=?";
       const paramsSelectArticulo = [ref];
@@ -57,32 +53,23 @@ class PurchaseService {
       const ivaIncluido = dataIva[0].IVA_INCLUIDO;
 
       let canBuy = false;
-      let idAlmacen = 0;
       let reduceStock = []; 
 
-      if(almacenDefecto){ //Existencias se obtienen de almacen definido
-        const querySelectAlmacen = "SELECT ID_ALMACEN FROM ALMACEN WHERE DESCRIPCION=?";
-        const paramsSelectAlmacen = [almacenDefecto];
-        let dataAlmacen = await FirebirdPromise.aquery(querySelectAlmacen, paramsSelectAlmacen, "comun");
-        if(dataAlmacen[0]){
-          idAlmacen = dataAlmacen[0].ID_ALMACEN;
-          const querySelectExistencias = "SELECT EXISTENCIAS FROM EXISTENCIA WHERE ID_ARTICULO=? AND ID_ALMACEN>=?";
-          const paramsSelectExistencias = [idArticulo, idAlmacen];
-          let dataExistencias = await FirebirdPromise.aquery(querySelectExistencias, paramsSelectExistencias, "empresa");
-          if(dataExistencias[0].EXISTENCIAS && dataExistencias[0].EXISTENCIAS >= unid){ 
-            canBuy = true; 
-            reduceStock.push({almacen: idAlmacen, unidades: dataExistencias[0].EXISTENCIAS});
-          }else{ 
-            return "OutOfStock"; 
-          }
-        }else{
-          return "almNotExist";
+      if(tratamiento){ //Se vende de un almacén en concreto
+        const querySelectExistencias = "SELECT EXISTENCIAS FROM EXISTENCIA WHERE ID_ARTICULO=? AND ID_ALMACEN=?";
+        const paramsSelectExistencias = [idArticulo, idAlmacen];
+        let dataExistencias = await FirebirdPromise.aquery(querySelectExistencias, paramsSelectExistencias, "empresa");
+        if(dataExistencias[0].EXISTENCIAS >= unid || venderSinExistencias){ 
+          canBuy = true; 
+          reduceStock.push({almacen: idAlmacen, unidades: unid});
+        }else{ 
+          return "OutOfStock"; 
         }
-      }else{ //Existencias se obtienen del total de las existencias en todos los almacenes
+      }else{ // Se vende globalmente sin tener en cuenta el almacén
         const querySelectExistencias = "SELECT SUM(EXISTENCIAS) AS SUMA_EXISTENCIAS FROM EXISTENCIA WHERE ID_ARTICULO=?";
         const paramsSelectExistencias = [idArticulo];
         let dataExistencias = await FirebirdPromise.aquery(querySelectExistencias, paramsSelectExistencias, "empresa");
-        if(dataExistencias[0].SUMA_EXISTENCIAS && dataExistencias[0].SUMA_EXISTENCIAS >= unid){ 
+        if(dataExistencias[0].SUMA_EXISTENCIAS >= unid){ // Hay existencias suficientes
           canBuy = true; 
           let cont = 0;
           const querySelectExistenciasPorAlmacen = "SELECT EXISTENCIAS, ID_ALMACEN FROM EXISTENCIA WHERE ID_ARTICULO=? AND EXISTENCIAS>0";
@@ -99,7 +86,40 @@ class PurchaseService {
             cont++;
           }
         }else{ 
-          return "OutOfStock"; 
+          if(venderSinExistencias){ // No hay existencias suficientes pero se puede vender sin existencias
+            canBuy = true; 
+            let cont = 0;
+            let last = 0; // Ultimo almacen del que se ha quitado existencias
+            if(dataExistencias[0].SUMA_EXISTENCIAS > 0){ //Hay existencias en algún almacén
+              const querySelectExistenciasPorAlmacen = "SELECT EXISTENCIAS, ID_ALMACEN FROM EXISTENCIA WHERE ID_ARTICULO=? AND EXISTENCIAS>0";
+              const paramsSelectExistenciasPorAlmacen = [idArticulo];
+              let dataExistencias = await FirebirdPromise.aquery(querySelectExistenciasPorAlmacen, paramsSelectExistenciasPorAlmacen, "empresa");
+              while(dataExistencias[cont]){
+                if(dataExistencias[cont].EXISTENCIAS<=unid){
+                  reduceStock.push({almacen: dataExistencias[cont].ID_ALMACEN, unidades: dataExistencias[cont].EXISTENCIAS});
+                  unid = unid - dataExistencias[cont].EXISTENCIAS;
+                  last = dataExistencias[cont].ID_ALMACEN;
+                }
+                cont++;
+              }
+              if(unid > 0){
+                reduceStock.push({almacen: last, unidades: unid});
+                cont++;
+              }
+            }else{ // No hay existencias en ningún almacén
+              const querySelectAlmacen = "SELECT ID_ALMACEN FROM ALMACEN";
+              const paramsSelectAlmacen = [idAlmacen];
+              let dataAlmacen = await FirebirdPromise.aquery(querySelectAlmacen, paramsSelectAlmacen, "comun");
+              if(dataAlmacen[0]){
+                reduceStock.push({almacen: dataAlmacen[0].ID_ALMACEN, unidades: unid});
+                cont++;
+              }else{
+                return "almNotExist";
+              }
+            }
+          }else{
+            return "OutOfStock"; 
+          }
         }
       }
 
