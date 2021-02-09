@@ -23,6 +23,7 @@ class PurchaseService {
       const paramsSelectArticulo = [ref];
       let dataArticulo = await FirebirdPromise.aquery(querySelectArticulo, paramsSelectArticulo, "empresa");
       const idArticulo = dataArticulo[0].ID_ARTICULO;
+      const idProveedor = dataArticulo[0].ID_PROVEEDOR;
       const referenciaArticulo = dataArticulo[0].REFERENCIA;
       const descripcionArticulo = dataArticulo[0].DESCRIPCION;
       const precioCosteM1Articulo = dataArticulo[0].PRECIO_COSTE_M1;
@@ -30,16 +31,30 @@ class PurchaseService {
       const precioVenta = dataArticulo[0].PRECIO_VENTA_TIENDA_VIRTUAL;
       const idIVAArticulo = dataArticulo[0].ID_IVA_VENTA;
 
-      const querySelectFamilia = "SELECT CODIGO, DESCRIPCION FROM FAMILIA WHERE ID_FAMILIA=?";
+      const querySelectFamilia = "SELECT CODIGO, DESCRIPCION, ID_GRUPO FROM FAMILIA WHERE ID_FAMILIA=?";
       const paramsSelectFamilia = [dataArticulo[0].ID_FAMILIA];
       let dataFamilia = await FirebirdPromise.aquery(querySelectFamilia, paramsSelectFamilia, "empresa");
       const codigoFamilia = dataFamilia[0].CODIGO;
       const descripcionFamilia = dataFamilia[0].DESCRIPCION;
+      const grupoFamilia = dataFamilia[0].ID_GRUPO;
 
-      const querySelectIva = "SELECT PORCENTAJE FROM IVA WHERE ID_IVA=?";
+      const querySelectGrupoFamilia = "SELECT CODIGO, DESCRIPCION FROM GRUPO WHERE ID_GRUPO=?";
+      const paramsSelectGrupoFamilia = [grupoFamilia];
+      let dataGrupoFamilia = await FirebirdPromise.aquery(querySelectGrupoFamilia, paramsSelectGrupoFamilia, "empresa");
+      const codigoGrupoFamilia = dataGrupoFamilia[0].CODIGO;
+      const descripcionGrupoFamilia = dataGrupoFamilia[0].DESCRIPCION;
+
+      const querySelectProveedor = "SELECT CODIGO, NOMBRE FROM PROVEEDOR WHERE ID_PROVEEDOR=?";
+      const paramsSelectProveedor = [idProveedor];
+      let dataProveedor = await FirebirdPromise.aquery(querySelectProveedor, paramsSelectProveedor, "empresa");
+      const codigoProveedor = dataProveedor[0].CODIGO;
+      const descripcionProveedor = dataProveedor[0].NOMBRE;
+
+      const querySelectIva = "SELECT PORCENTAJE, IVA_INCLUIDO FROM IVA WHERE ID_IVA=?";
       const paramsSelectIva = [idIVAArticulo];
       let dataIva = await FirebirdPromise.aquery(querySelectIva, paramsSelectIva, "empresa");
       const porcentajeIva = dataIva[0].PORCENTAJE;
+      const ivaIncluido = dataIva[0].IVA_INCLUIDO;
 
       let canBuy = false;
       let idAlmacen = 0;
@@ -92,12 +107,12 @@ class PurchaseService {
         let reduce;
         const queryUpdateExistencia = "UPDATE EXISTENCIA SET EXISTENCIAS=EXISTENCIAS-? WHERE ID_ARTICULO=? AND ID_ALMACEN=?";
         let paramsUpdateExistencia = [];
-        const queryInsertMovimiento = "INSERT INTO MOVIMIENTO (ID_TMOVIMIENTO, DESCRIPCION_MOV, FECHA, REFERENCIA,"+
+        const queryInsertMovimiento = "INSERT INTO MOVIMIENTO (ID_TMOVIMIENTO, DESCRIPCION_MOV, FECHA, FECHA_SISTEMA, FECHA_OPERACION, REFERENCIA,"+
                                       "DESCRIPCION, UNIDADES, PRECIO_COSTE_M1, PRECIO_COSTE_M2, PRECIO_VENTA_M1,"+
-                                      "IVA_VENTA_PORC, IVA_VENTA_IMP_M1, ID_ALMACEN,"+
+                                      "IVA_VENTA_PORC, IVA_VENTA_IMP_M1, ID_ALMACEN, PROVEEDOR_CODIGO, PROVEEDOR_DESCRIPCION,"+
                                       "FAMILIA_CODIGO, FAMILIA_DESCRIPCION, LIQUIDO_M1, BI_BASE_M1,"+
-                                      "BI_IVA_M1)"+
-                                      "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                                      "BI_IVA_M1, GRUPO_VENTA_CODIGO, GRUPO_VENTA_DESCRIPCION)"+
+                                      "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         let paramsInsertMovimiento = [];
         while(reduceStock.length){
           //Reducimos stock en almacen
@@ -106,12 +121,20 @@ class PurchaseService {
           await FirebirdPromise.aquery(queryUpdateExistencia, paramsUpdateExistencia, "empresa");
 
           //Insertamos movimientos
-          const base = parseFloat(precioVenta*reduce.unidades);
-          const ivaVenta = parseFloat(base * (porcentajeIva/100));
-          const liquido = base + ivaVenta;
-          paramsInsertMovimiento = [8, "Venta de tienda virtual", datePurchase, referenciaArticulo, descripcionArticulo, reduce.unidades, precioCosteM1Articulo, precioCosteM2Articulo,
-                                    precioVenta, porcentajeIva, ivaVenta, reduce.almacen, codigoFamilia, descripcionFamilia,
-                                    liquido, base, ivaVenta];
+          let ivaVenta, liquido, base = 0
+          if(ivaIncluido){
+            liquido = parseFloat(precioVenta*reduce.unidades);
+            base = parseFloat(liquido/(1+(porcentajeIva/100)));
+            ivaVenta = parseFloat(liquido - base);
+          }else{
+            liquido = parseFloat(precioVenta*reduce.unidades);
+            base = liquido;
+            ivaVenta = parseFloat(base * (porcentajeIva/100));
+          }
+
+          paramsInsertMovimiento = [8, "Venta de tienda virtual", datePurchase, datePurchase, datePurchase, referenciaArticulo, descripcionArticulo, reduce.unidades, precioCosteM1Articulo, precioCosteM2Articulo,
+                                    precioVenta, porcentajeIva, ivaVenta, reduce.almacen, codigoProveedor, descripcionProveedor, codigoFamilia, descripcionFamilia,
+                                    liquido, base, ivaVenta, codigoGrupoFamilia, descripcionGrupoFamilia];
           await FirebirdPromise.aquery(queryInsertMovimiento, paramsInsertMovimiento, "empresa");
         }
         return "ok";
