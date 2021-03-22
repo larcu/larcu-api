@@ -2,7 +2,7 @@ const FirebirdPromise = require("./database.js");
 const dateFormat = require('dateformat');
 
 class PurchaseService {
-  async create({ ref, unid }) {
+  async create({ ref, unid, id }) {
     if ((!ref)||(!unid)) {
       return "badArguments";
     }
@@ -151,8 +151,8 @@ class PurchaseService {
             base = liquido;
             ivaVenta = parseFloat(base * (porcentajeIva/100));
           }
-
-          paramsInsertMovimiento = [8, "Venta de tienda virtual", datePurchase, datePurchase, datePurchase, referenciaArticulo, descripcionArticulo, reduce.unidades, precioCosteM1Articulo, precioCosteM2Articulo,
+		      let descripcion = "Venta de tienda virtual "+id;
+          paramsInsertMovimiento = [8, descripcion, datePurchase, datePurchase, datePurchase, referenciaArticulo, descripcionArticulo, reduce.unidades, precioCosteM1Articulo, precioCosteM2Articulo,
                                     precioVenta, porcentajeIva, ivaVenta, reduce.almacen, codigoProveedor, descripcionProveedor, codigoFamilia, descripcionFamilia,
                                     liquido, base, ivaVenta, codigoGrupoFamilia, descripcionGrupoFamilia];
           await FirebirdPromise.aquery(queryInsertMovimiento, paramsInsertMovimiento, "empresa");
@@ -166,7 +166,7 @@ class PurchaseService {
       console.error(error);
       return 'error';
     }
-  }
+  } 
   
   async read({ startDate, endDate }) {
     let query;

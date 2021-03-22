@@ -114,19 +114,24 @@ class ItemService {
           value: 'PRECIO_VENTA_TIENDA_VIRTUAL'
         },
         {
+          label: 'manage_stock',
+          value: 'manage_stock',
+		      default: true
+        },
+        {
           label: 'stock',
           value: 'STOCK'
         },
         {
           label: 'weight',
-          value: 'TAMANO'
+          value: 'TV_PESO'
         },
         {
           label: 'Images',
-          value: 'IMAGEN'
+          value: 'TV_IMAGEN'
         },
         {
-          label: 'tax:product_cat',
+          label: 'categories',
           value: 'NOMBRE_FAMILIA'
         },
         {

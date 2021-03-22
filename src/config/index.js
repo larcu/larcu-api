@@ -10,7 +10,11 @@ module.exports = {
   appName: process.env.APP_NAME,
   version: process.env.APP_VERSION,
   minVersion: process.env.APP_MIN_VERSION,
-  webURL: process.env.WEB_URL,
+  secret_key: process.env.SECRET_KEY,
+  time_check: process.env.TIME_CHECK,
+  url_store: process.env.URL_STORE,
+  consumer_key: process.env.CONSUMER_KEY,
+  consumer_secret: process.env.CONSUMER_SECRET,
   database: {
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
