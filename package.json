@@ -5,7 +5,8 @@
   "main": "src/app.js",
   "scripts": {
     "init": "nodemon",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "exportcsv": "node scripts/export.js"
   },
   "repository": {
     "type": "git",

@@ -49,7 +49,7 @@ class FirebirdPromiseComun {
     if (db) {
       return new Promise(
         (resolve, reject) => {
-          if (config.log.SQL) {
+          if (config.log.SQL=="true") {
             console.log(querysql)
           };
           db.query(querysql, params, (err, data) => {
@@ -95,7 +95,7 @@ class FirebirdPromiseEmpresa {
     if (db) {
       return new Promise(
         (resolve, reject) => {
-          if (config.log.SQL) {
+          if (config.log.SQL=="true") {
             console.log(querysql)
           };
           db.query(querysql, params, (err, data) => {
