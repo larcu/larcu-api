@@ -77,7 +77,10 @@ if (config.consumer_key && config.consumer_secret) {
 // Middlewares to parse the body of the requests
 app.use(bodyParser.urlencoded({
 	extended: true,
-	limit: "10mb"
+	limit: "10mb",
+	verify: function (req, res, buf) {
+		req.rawBody = buf
+	}
 }));
 app.use(bodyParser.json({
 	verify: function (req, res, buf) {

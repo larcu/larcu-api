@@ -34,17 +34,25 @@ class PurchaseService {
       const descripcionFamilia = dataFamilia[0].DESCRIPCION;
       const grupoFamilia = dataFamilia[0].ID_GRUPO;
 
-      const querySelectGrupoFamilia = "SELECT CODIGO, DESCRIPCION FROM GRUPO WHERE ID_GRUPO=?";
-      const paramsSelectGrupoFamilia = [grupoFamilia];
-      let dataGrupoFamilia = await FirebirdPromise.aquery(querySelectGrupoFamilia, paramsSelectGrupoFamilia, "empresa");
-      const codigoGrupoFamilia = dataGrupoFamilia[0].CODIGO;
-      const descripcionGrupoFamilia = dataGrupoFamilia[0].DESCRIPCION;
+      let codigoGrupoFamilia = "";
+      let descripcionGrupoFamilia = "";
+      if(grupoFamilia!=-1){
+        const querySelectGrupoFamilia = "SELECT CODIGO, DESCRIPCION FROM GRUPO WHERE ID_GRUPO=?";
+        const paramsSelectGrupoFamilia = [grupoFamilia];
+        let dataGrupoFamilia = await FirebirdPromise.aquery(querySelectGrupoFamilia, paramsSelectGrupoFamilia, "empresa");
+        codigoGrupoFamilia = dataGrupoFamilia[0].CODIGO;
+        descripcionGrupoFamilia = dataGrupoFamilia[0].DESCRIPCION;
+      }
 
-      const querySelectProveedor = "SELECT CODIGO, NOMBRE FROM PROVEEDOR WHERE ID_PROVEEDOR=?";
-      const paramsSelectProveedor = [idProveedor];
-      let dataProveedor = await FirebirdPromise.aquery(querySelectProveedor, paramsSelectProveedor, "empresa");
-      const codigoProveedor = dataProveedor[0].CODIGO;
-      const descripcionProveedor = dataProveedor[0].NOMBRE;
+      let codigoProveedor = "";
+      let descripcionProveedor = "";
+      if(idProveedor!=-1){
+        const querySelectProveedor = "SELECT CODIGO, NOMBRE FROM PROVEEDOR WHERE ID_PROVEEDOR=?";
+        const paramsSelectProveedor = [idProveedor];
+        let dataProveedor = await FirebirdPromise.aquery(querySelectProveedor, paramsSelectProveedor, "empresa");
+        codigoProveedor = dataProveedor[0].CODIGO;
+        descripcionProveedor = dataProveedor[0].NOMBRE;
+      }
 
       const querySelectIva = "SELECT PORCENTAJE, IVA_INCLUIDO FROM IVA WHERE ID_IVA=?";
       const paramsSelectIva = [idIVAArticulo];
