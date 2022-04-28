@@ -2,7 +2,7 @@ const config = require("../src/config/index.js");
 const FirebirdPromise = require("../src/services/database.js");
 const WooCommerce = require("@woocommerce/woocommerce-rest-api").default;
 
-//Sube de forma automática los nuevos productos creados en Winvisión. También borra de la tienda online los borrados en Winvisión
+//Sube de forma automática los nuevos productos creados en Winvisión. También actualiza los stocks de las reposiciones
 async function match() {
   try {
     if (config.consumer_key && config.consumer_secret) {
