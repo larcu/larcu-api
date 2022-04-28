@@ -35,6 +35,7 @@ if (config.consumer_key && config.consumer_secret) {
 	}
 	initPrevCounter();
 	setInterval(async function () {
+		// Actualiza el stock de la tienda online cada vez que se vende algo en winvision
 		let number = 0;
 		let counter = await checkMove();
 		if (counter > prevCounter) {
@@ -60,12 +61,12 @@ if (config.consumer_key && config.consumer_secret) {
 									}
 								})
 								.catch((error) => {
-									console.log(error.response.data);
+									console.log(error);
 								});
 						}
 					})
 					.catch((error) => {
-						console.log(error.response.data);
+						console.log(error);
 					});
 			}
 		}
