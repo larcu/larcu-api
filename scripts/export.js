@@ -61,7 +61,7 @@ async function exportcsv() {
       },
       {
         label: 'Images',
-        value: 'TV_IMAGEN'
+        value: 'IMAGEN'
       },
       {
         label: 'categories',
