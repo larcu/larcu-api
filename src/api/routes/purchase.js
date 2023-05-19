@@ -16,37 +16,101 @@ function processWebHookSignature(secret, body, signature) {
 route.post('/woocommerce', async (req, res) => {
   const secret = config.secret_key;
   const signature = req.header("X-WC-Webhook-Signature");
-  let result;
   if(processWebHookSignature(secret, req.rawBody, signature)){
-	const id = req.body['id'];
-	const items = req.body['line_items'];
-	items.forEach(async function(item) {
-	  result = await purchaseService.create({
-      ref: item.sku,
-      unid: item.quantity,
-      id: id,
-	  });
-
-	  switch (result) {
-		case 'badArguments':
-		  res.status(400).send('bad request');
-		  return;
-		case 'OutOfStock':
-		  res.status(400).send('out of stock');
-		  return;
-		case 'almNotExist':
-		  res.status(400).send('store does not exist');
-		  return;
-		case 'ok':
-		  res.status(200).send('ok');
-		  return;
-		case 'error':
-		  res.status(500).send('error');
-		  return;
-	  }
-	});
+    const id = req.body['id'];
+    const items = req.body['line_items'];
+  
+    for (const item of items) {
+      try {
+        const result = await purchaseService.create({
+          ref: item.sku,
+          unid: item.quantity,
+          id: id,
+        });
+  
+        switch (result) {
+          case 'badArguments':
+            res.status(400).send('bad request');
+            return;
+          case 'OutOfStock':
+            res.status(400).send('out of stock');
+            return;
+          case 'almNotExist':
+            res.status(400).send('store does not exist');
+            return;
+          case 'ok':
+            // Continuar con la iteración para procesar los siguientes items
+            break;
+          case 'error':
+            res.status(500).send('error');
+            return;
+        }
+      } catch (error) {
+        console.error("Error at /woocommerce route: ");
+        console.error(error);
+        res.status(500).send('error');
+        return;
+      }
+    }
+    res.status(200).send('ok');
   }else{
 	  res.status(400).send('unauthorized');
+    return;
+  }
+});
+
+function verifyShopifyWebhookSignature(secret, body, signature) {
+  const calculatedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(body, 'utf8')
+    .digest('base64');
+
+  return calculatedSignature === signature;
+}
+
+route.post('/shopify', async (req, res) => {
+  const secret = config.shopify_signature;
+  const signature = req.headers['x-shopify-hmac-sha256'];
+
+  if(verifyShopifyWebhookSignature(secret, req.rawBody, signature)){
+    const id = req.body['id'];
+    const items = req.body['line_items'];
+
+    for (const item of items) {
+      try {
+        const result = await purchaseService.create({
+          ref: item.sku,
+          unid: item.quantity,
+          id: id,
+        });
+
+        switch (result) {
+          case 'badArguments':
+            res.status(400).send('bad request');
+            return;
+          case 'OutOfStock':
+            res.status(400).send('out of stock');
+            return;
+          case 'almNotExist':
+            res.status(400).send('store does not exist');
+            return;
+          case 'ok':
+            // Continuar con la iteración para procesar los siguientes items
+            break;
+          case 'error':
+            res.status(500).send('error');
+            return;
+        }
+      } catch (error) {
+        console.error("Error at /shopify route: ");
+        console.error(error);
+        res.status(500).send('error');
+        return;
+      }
+    }
+    res.status(200).send('ok');
+  }else{
+    res.status(400).send('unauthorized');
     return;
   }
 });

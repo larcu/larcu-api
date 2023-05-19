@@ -15,6 +15,7 @@ module.exports = {
   url_store: process.env.URL_STORE,
   consumer_key: process.env.CONSUMER_KEY,
   consumer_secret: process.env.CONSUMER_SECRET,
+  shopify_signature: process.env.SHOPIFY_SIGNATURE_SECRET,
   database: {
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
