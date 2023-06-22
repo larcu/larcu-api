@@ -15,7 +15,7 @@ async function checkValidUser(req, res, next) {
 
     query = "SELECT ID_USUARIO FROM USUARIO WHERE 1=1";
     if (user) {
-      query += " AND NOMBRE_USUARIO=?";
+      query += " AND NOMBRE_ACCESO=?";
       params.push(user);
     }
     if (pass) {
