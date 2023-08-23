@@ -22,11 +22,11 @@ async function match() {
       const tratamiento = dataTratamientoAlmacen[0].EXISTENCIAS_TRATAMIENTO;
       const idAlmacen = dataTratamientoAlmacen[0].EXISTENCIAS_ALMACEN;
 
-      if(tratamiento){ //Se vende de un almacén en concreto
+      if(config.multi_store_sale == "true" || !tratamiento) { //Se vende globalmente sin tener en cuenta el almacén
+        query = "SELECT A.*, F.DESCRIPCION AS NOMBRE_FAMILIA, (SELECT SUM(E.EXISTENCIAS) FROM EXISTENCIA E WHERE E.ID_ARTICULO = A.ID_ARTICULO) AS STOCK FROM ARTICULO A INNER JOIN FAMILIA F ON A.ID_FAMILIA = F.ID_FAMILIA WHERE A.TELEMATICO=1";
+      }else{ //Se vende de un almacén en concreto
         query = "SELECT A.*, F.DESCRIPCION AS NOMBRE_FAMILIA, (SELECT SUM(E.EXISTENCIAS) FROM EXISTENCIA E WHERE E.ID_ARTICULO = A.ID_ARTICULO AND E.ID_ALMACEN=?) AS STOCK FROM ARTICULO A INNER JOIN FAMILIA F ON A.ID_FAMILIA = F.ID_FAMILIA WHERE A.TELEMATICO=1";
         params.push(idAlmacen);
-      }else{ //Se vende globalmente sin tener en cuenta el almacén
-        query = "SELECT A.*, F.DESCRIPCION AS NOMBRE_FAMILIA, (SELECT SUM(E.EXISTENCIAS) FROM EXISTENCIA E WHERE E.ID_ARTICULO = A.ID_ARTICULO) AS STOCK FROM ARTICULO A INNER JOIN FAMILIA F ON A.ID_FAMILIA = F.ID_FAMILIA WHERE A.TELEMATICO=1";
       }
 
       query += " ORDER BY LOWER(A.DESCRIPCION)";

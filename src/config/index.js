@@ -13,6 +13,7 @@ module.exports = {
   secret_key: process.env.SECRET_KEY,
   time_check: process.env.TIME_CHECK,
   url_store: process.env.URL_STORE,
+  multi_store_sale: process.env.MULTI_STORE_SALE,
   consumer_key: process.env.CONSUMER_KEY,
   consumer_secret: process.env.CONSUMER_SECRET,
   shopify_signature: process.env.SHOPIFY_SIGNATURE_SECRET,
