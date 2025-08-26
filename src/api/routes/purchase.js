@@ -15,7 +15,14 @@ function processWebHookSignature(secret, body, signature) {
 
 route.post('/woocommerce', async (req, res) => {
   const secret = config.secret_key;
-  const signature = req.header("X-WC-Webhook-Signature");
+  const signature = req.headers['x-wc-webhook-signature'];
+
+  // Si no viene firma, probablemente sea un "ping" de WordPress al crear webhook
+  if (!signature) {
+    console.log('Webhook ping recibido desde WordPress (sin firma)');
+    return res.status(200).send('pong');
+  }
+  
   if(processWebHookSignature(secret, req.rawBody, signature)){
     const id = req.body['id'];
     const items = req.body['line_items'];
